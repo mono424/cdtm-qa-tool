@@ -1,75 +1,95 @@
 "use client";
-
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
 import { toast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import RichTextEditor from "../components/text-editor";
+import { CitationCheck } from "@/lib/checks/citation-check";
+import { Hint } from "@/lib/checks/check";
+import { useState } from "react";
+import { NumberCheck } from "@/lib/checks/number-check";
+import { CurrencyCheck } from "@/lib/checks/currency-check";
+import { ThoughtDashCheck } from "@/lib/checks/thought-dash-check";
+import { OxfordCommaCheck } from "@/lib/checks/oxford-comma-check";
+import { ApostropheCheck } from "@/lib/checks/apostrophe-check";
+import { QuotationMarkCheck } from "@/lib/checks/quotationmark-check";
+import { Button } from "@/components/ui/button";
+import { EgCommaCheck } from "@/lib/checks/eg-comma-check";
+import { WordsCheck } from "@/lib/checks/words-check";
+import { PercentageCheck } from "@/lib/checks/percentage-check";
+import { NumberRangeCheck } from "@/lib/checks/number-range-check";
 
-const formSchema = z.object({
-  about: z.string().min(2, {
-    message: "about must be at least 2 characters.",
-  }),
-});
+const checks = [
+  new CitationCheck(),
+  new NumberCheck(),
+  new CurrencyCheck(),
+  new ThoughtDashCheck(),
+  new OxfordCommaCheck(),
+  new ApostropheCheck(),
+  new QuotationMarkCheck(),
+  new EgCommaCheck(),
+  new WordsCheck(),
+  new PercentageCheck(),
+  new NumberRangeCheck(),
+];
 
 export default function ProfileForm() {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      about: "",
-    },
-  });
+  const [text, setText] = useState("");
+  const [hints, setHints] = useState<Hint[]>([]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-
+  function copyContext(hint: Hint) {
+    const from = hint.index - 24;
+    const to = hint.index + hint.text.length + 24;
+    const context = text.substring(
+      from < 0 ? 0 : from,
+      to > text.length ? text.length : to,
+    );
+    navigator.clipboard.writeText(context);
     toast({
-      title: "You submitted the following values:",
+      title: "Copied Context",
       description: (
         <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
+          <code className="text-white">{context}</code>
         </pre>
       ),
     });
   }
 
+  function onNewHints(hints: Hint[]) {
+    setHints(hints);
+    // toast({
+    //   title: "Check Results",
+    //   description: (
+    //     <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+    //       <code className="text-white">Done: {hints.length} hints</code>
+    //     </pre>
+    //   ),
+    // });
+  }
+
   return (
-    <div className="w-1/2 h-screen mx-auto space-y-20">
-      <h1 className="flex justify-center pt-20 text-2xl font-medium">
-        Rich Text Editor Developed Using Shadcn and Tiptap
+    <div className="w-[740px] h-screen mx-auto">
+      <h1 className="flex justify-center pt-20 text-2xl font-medium mb-12">
+        CDTM | QA Check Tool
       </h1>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <FormField
-            control={form.control}
-            name="about"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>About</FormLabel>
-                <FormControl>
-                  <RichTextEditor {...field} />
-                </FormControl>
-                <FormDescription>
-                  Tell a little bit about yourself.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit">Submit</Button>
-        </form>
-      </Form>
+      <RichTextEditor
+        value={text}
+        onChange={setText}
+        checks={checks}
+        onNewHints={onNewHints}
+      />
+      <div className="flex flex-col gap-2 p-4">
+        {hints.map((hint) => (
+          <div
+            key={hint.key}
+            className="p-4 border border-solid border-red-400"
+          >
+            <h3>
+              <b>{hint.index}</b> &quot;{hint.text}&quot;
+            </h3>
+            <p>{hint.hint}</p>
+            <p>{hint.suggestion}</p>
+            <Button onClick={() => copyContext(hint)}>Copy Context</Button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
